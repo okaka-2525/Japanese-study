@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>学習アプリ 完全決定版</title>
+    <style>
+        body { font-family: 'Hiragino Kaku Gothic ProN', 'Meiryo', sans-serif; text-align: center; margin-top: 40px; background-color: #f9f9f9; }
+        .container { max-width: 650px; margin: 0 auto; padding: 20px; background: white; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        .hidden { display: none; }
+        .card { font-size: 100px; margin: 15px 0; font-weight: bold; color: #333; }
+        .reading { font-size: 22px; margin-bottom: 20px; min-height: 50px; line-height: 1.6; color: #444; white-space: pre-line; }
+        button { font-size: 18px; padding: 12px 24px; margin: 5px; cursor: pointer; border-radius: 5px; border: none; font-weight: bold; transition: 0.2s; }
+        .btn-start { background-color: #2ecc71; color: white; }
+        .btn-show { background-color: #f39c12; color: white; }
+        .btn-blue { background-color: #3498db; color: white; }
+        .btn-red { background-color: #e74c3c; color: white; }
+        button:hover { opacity: 0.8; }
+        .stats { font-size: 18px; margin-bottom: 20px; }
+        select { font-size: 18px; padding: 8px; border-radius: 5px; margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div id="screen-home">
+        <h2>これで本当に全部よ！サボらずに勉強しなさい！</h2>
+        <select id="category">
+            <option value="hiragana">ひらがな (濁音・拗音 全104字)</option>
+            <option value="katakana">カタカナ (濁音・拗音 全104字)</option>
+            <option value="grade1">小学1年生の漢字 (全80字)</option>
+            <option value="grade2">小学2年生の漢字 (全160字)</option>
+        </select>
+        <br>
+        <button class="btn-start" onclick="startApp()">スタート</button>
+    </div>
+
+    <div id="screen-quiz" class="hidden">
+        <div class="stats">
+            表示回数: <span id="total-count">0</span>回 | 
+            <span style="color: blue;">青(正解): <span id="blue-count">0</span></span> | 
+            <span style="color: red;">赤(不正解): <span id="red-count">0</span> / 10</span>
+        </div>
+        
+        <div id="question-text" class="card"></div>
+        <div id="answer-text" class="reading"></div>
+        
+        <button id="btn-show-answer" class="btn-show" onclick="showAnswer()">答えを見る</button>
+        
+        <div id="judge-buttons" class="hidden">
+            <button class="btn-blue" onclick="judge(true)">合ってた(青)</button>
+            <button class="btn-red" onclick="judge(false)">間違えた(赤)</button>
+        </div>
+    </div>
+
+    <div id="screen-result" class="hidden">
+        <h2>終了よ！お疲れ様！</h2>
+        <p>赤カウントが10になったわ。間違えたところを復習しなさいよね！</p>
+        <h3 style="color: blue;">あなたの記録（青カウント）: <span id="final-score"></span></h3>
+        <button class="btn-start" onclick="goHome()">ホームに戻る</button>
+    </div>
+</div>
+
+<script>
+    const data = {
+        hiragana: [
+            {q:"あ",a:"ア"},{q:"い",a:"イ"},{q:"う",a:"ウ"},{q:"え",a:"エ"},{q:"お",a:"オ"},{q:"か",a:"カ"},{q:"き",a:"キ"},{q:"く",a:"ク"},{q:"け",a:"ケ"},{q:"こ",a:"コ"},{q:"さ",a:"サ"},{q:"し",a:"シ"},{q:"す",a:"ス"},{q:"せ",a:"セ"},{q:"そ",a:"ソ"},{q:"た",a:"タ"},{q:"ち",a:"チ"},{q:"つ",a:"ツ"},{q:"て",a:"テ"},{q:"と",a:"ト"},{q:"な",a:"ナ"},{q:"に",a:"ニ"},{q:"ぬ",a:"ヌ"},{q:"ね",a:"ネ"},{q:"の",a:"ノ"},{q:"は",a:"ハ"},{q:"ひ",a:"ヒ"},{q:"ふ",a:"フ"},{q:"へ",a:"ヘ"},{q:"ほ",a:"ホ"},{q:"ま",a:"マ"},{q:"み",a:"ミ"},{q:"む",a:"ム"},{q:"め",a:"メ"},{q:"も",a:"モ"},{q:"や",a:"ヤ"},{q:"ゆ",a:"ユ"},{q:"よ",a:"ヨ"},{q:"ら",a:"ラ"},{q:"り",a:"リ"},{q:"る",a:"ル"},{q:"れ",a:"レ"},{q:"ろ",a:"ロ"},{q:"わ",a:"ワ"},{q:"を",a:"ヲ"},{q:"ん",a:"ン"},
+            {q:"が",a:"ガ"},{q:"ぎ",a:"ギ"},{q:"ぐ",a:"グ"},{q:"げ",a:"ゲ"},{q:"ご",a:"ゴ"},{q:"ざ",a:"ザ"},{q:"じ",a:"ジ"},{q:"ず",a:"ズ"},{q:"ぜ",a:"ゼ"},{q:"ぞ",a:"ゾ"},{q:"だ",a:"ダ"},{q:"ぢ",a:"ヂ"},{q:"づ",a:"ヅ"},{q:"で",a:"デ"},{q:"ど",a:"ド"},{q:"ば",a:"バ"},{q:"び",a:"ビ"},{q:"ぶ",a:"ブ"},{q:"べ",a:"ベ"},{q:"ぼ",a:"ボ"},{q:"ぱ",a:"パ"},{q:"ぴ",a:"ピ"},{q:"ぷ",a:"プ"},{q:"ぺ",a:"ペ"},{q:"ぽ",a:"ポ"},
+            {q:"きゃ",a:"キョ"},{q:"きゅ",a:"キュ"},{q:"きょ",a:"キョ"},{q:"しゃ",a:"シャ"},{q:"しゅ",a:"シュ"},{q:"しょ",a:"ショ"},{q:"ちゃ",a:"チャ"},{q:"ちゅ",a:"チュ"},{q:"ちょ",a:"チョ"},{q:"にゃ",a:"ニャ"},{q:"にゅ",a:"ニュ"},{q:"にょ",a:"ニョ"},{q:"ひゃ",a:"ヒャ"},{q:"ひゅ",a:"ヒュ"},{q:"ひょ",a:"ヒョ"},{q:"みゃ",a:"ミャ"},{q:"みゅ",a:"ミュ"},{q:"みょ",a:"ミョ"},{q:"りゃ",a:"リャ"},{q:"りゅ",a:"リュ"},{q:"りょ",a:"リョ"},{q:"ぎゃ",a:"ギャ"},{q:"ぎゅ",a:"ギュ"},{q:"ぎょ",a:"ギョ"},{q:"じゃ",a:"ジャ"},{q:"じゅ",a:"ジュ"},{q:"じょ",a:"ジョ"},{q:"びゃ",a:"ビャ"},{q:"びゅ",a:"ビュ"},{q:"びょ",a:"ビョ"},{q:"ぴゃ",a:"ピャ"},{q:"ぴゅ",a:"ピュ"},{q:"ぴょ",a:"ピョ"}
+        ],
+        katakana: [
+            {q:"ア",a:"あ"},{q:"イ",a:"い"},{q:"ウ",a:"う"},{q:"エ",a:"え"},{q:"オ",a:"お"},{q:"カ",a:"か"},{q:"キ",a:"き"},{q:"ク",a:"く"},{q:"ケ",a:"け"},{q:"コ",a:"こ"},{q:"サ",a:"さ"},{q:"シ",a:"し"},{q:"ス",a:"す"},{q:"セ",a:"せ"},{q:"ソ",a:"そ"},{q:"タ",a:"た"},{q:"チ",a:"ち"},{q:"ツ",a:"つ"},{q:"テ",a:"て"},{q:"ト",a:"と"},{q:"ナ",a:"な"},{q:"ニ",a:"に"},{q:"ヌ",a:"ぬ"},{q:"ネ",a:"ね"},{q:"ノ",a:"の"},{q:"ハ",a:"は"},{q:"ヒ",a:"ひ"},{q:"フ",a:"ふ"},{q:"ヘ",a:"へ"},{q:"ホ",a:"ほ"},{q:"マ",a:"ま"},{q:"ミ",a:"み"},{q:"ム",a:"む"},{q:"メ",a:"め"},{q:"モ",a:"も"},{q:"ヤ",a:"や"},{q:"ユ",a:"ゆ"},{q:"ヨ",a:"よ"},{q:"ラ",a:"ら"},{q:"リ",a:"り"},{q:"ル",a:"る"},{q:"レ",a:"れ"},{q:"ロ",a:"ろ"},{q:"ワ",a:"わ"},{q:"ヲ",a:"を"},{q:"ン",a:"ん"},
+            {q:"ガ",a:"が"},{q:"ギ",a:"ぎ"},{q:"グ",a:"ぐ"},{q:"ゲ",a:"げ"},{q:"ゴ",a:"ご"},{q:"ザ",a:"ざ"},{q:"ジ",a:"じ"},{q:"ズ",a:"ず"},{q:"ゼ",a:"ぜ"},{q:"ゾ",a:"ぞ"},{q:"ダ",a:"だ"},{q:"ヂ",a:"ぢ"},{q:"づ",a:"づ"},{q:"デ",a:"で"},{q:"ド",a:"ど"},{q:"バ",a:"ば"},{q:"ビ",a:"び"},{q:"ブ",a:"ぶ"},{q:"ベ",a:"べ"},{q:"ボ",a:"ぼ"},{q:"パ",a:"ぱ"},{q:"ピ",a:"ぴ"},{q:"プ",a:"ぷ"},{q:"ペ",a:"ぺ"},{q:"ポ",a:"ぽ"},
+            {q:"キャ",a:"きゃ"},{q:"キュ",a:"きゅ"},{q:"キョ",a:"きょ"},{q:"シャ",a:"しゃ"},{q:"シュ",a:"しゅ"},{q:"ショ",a:"しょ"},{q:"チャ",a:"ちゃ"},{q:"チュ",a:"ちゅ"},{q:"チョ",a:"ちょ"},{q:"ニャ",a:"にゃ"},{q:"ニュ",a:"にゅ"},{q:"ニョ",a:"にょ"},{q:"ヒャ",a:"ひゃ"},{q:"ヒュ",a:"ひゅ"},{q:"ヒョ",a:"ひょ"},{q:"ミャ",a:"みゃ"},{q:"ミュ",a:"みゅ"},{q:"ミョ",a:"みょ"},{q:"リャ",a:"りゃ"},{q:"リュ",a:"りゅ"},{q:"リョ",a:"リョ"},{q:"ギャ",a:"ぎゃ"},{q:"ギュ",a:"ぎゅ"},{q:"ギョ",a:"ぎょ"},{q:"ジャ",a:"じゃ"},{q:"ジュ",a:"じゅ"},{q:"ジョ",a:"じょ"},{q:"ビャ",a:"びゃ"},{q:"ビュ",a:"びゅ"},{q:"ビョ",a:"びょ"},{q:"ピャ",a:"ぴゃ"},{q:"ピュ",a:"ぴゅ"},{q:"ピョ",a:"ぴょ"}
+        ],
+        grade1: [
+            {q:"一",onyomi:"いち、いつ",kunyomi:"ヒト、ヒト・ツ"},{q:"二",onyomi:"に、じ",kunyomi:"フタ、フタ・ツ"},{q:"三",onyomi:"さん",kunyomi:"ミ、ミ・ツ、ミッ・ツ"},{q:"四",onyomi:"し",kunyomi:"ヨ、ヨ・ツ、ヨッ・ツ、ヨン"},{q:"五",onyomi:"ご",kunyomi:"イツ、イツ・ツ"},{q:"六",onyomi:"ろく",kunyomi:"ム、ム・ツ、ムッ・ツ、ムイ"},{q:"七",onyomi:"しち",kunyomi:"ナナ、ナナ・ツ、ナノ"},{q:"八",onyomi:"はち",kunyomi:"ヤ、ヤ・ツ、ヤッ・ツ、ヨウ"},{q:"九",onyomi:"きゅう、く",kunyomi:"ココノ、ココノ・ツ"},{q:"十",onyomi:"じゅう、じっ",kunyomi:"トオ、ト"},{q:"百",onyomi:"ひゃく",kunyomi:"なし"},{q:"千",onyomi:"せん",kunyomi:"チ"},{q:"上",onyomi:"じょう、しょう",kunyomi:"ウエ、ウワ、カミ、ア・ゲル、ノボ・ル"},{q:"下",onyomi:"か、げ",kunyomi:"シタ、シモ、モト、サ・ゲル、クダ・ル"},{q:"左",onyomi:"さ",kunyomi:"ヒダリ"},{q:"右",onyomi:"う、ゆう",kunyomi:"ミギ"},{q:"中",onyomi:"ちゅう",kunyomi:"ナカ"},{q:"大",onyomi:"だい、たい",kunyomi:"オオ、オオ・キイ"},{q:"小",onyomi:"しょう",kunyomi:"チイ・サイ、コ、オ"},{q:"月",onyomi:"げつ、がつ",kunyomi:"ツキ"},{q:"日",onyomi:"にち、じつ",kunyomi:"ヒ、ビ、カ"},{q:"年",onyomi:"ねん",kunyomi:"トシ"},{q:"早",onyomi:"そう、さっ",kunyomi:"ハヤ・イ、ハヤ・まる"},{q:"木",onyomi:"ぼく、もく",kunyomi:"キ、コ"},{q:"林",onyomi:"りん",kunyomi:"ハヤシ"},{q:"山",onyomi:"さん",kunyomi:"ヤマ"},{q:"川",onyomi:"せん",kunyomi:"カワ"},{q:"土",onyomi:"ど、と",kunyomi:"ツチ"},{q:"空",onyomi:"くう",kunyomi:"ソラ、ア・ク、カラ"},{q:"田",onyomi:"でん",kunyomi:"タ"},{q:"天",onyomi:"てん",kunyomi:"アメ、アマ"},{q:"生",onyomi:"せい、しょう",kunyomi:"イ・キル、ウ・ム、ナマ"},{q:"花",onyomi:"か",kunyomi:"ハナ"},{q:"草",onyomi:"そう",kunyomi:"クサ"},{q:"虫",onyomi:"ちゅう",kunyomi:"ムシ"},{q:"犬",onyomi:"けん",kunyomi:"イヌ"},{q:"人",onyomi:"じん、にん",kunyomi:"ヒト"},{q:"名",onyomi:"めい、みょう",kunyomi:"ナ"},{q:"女",onyomi:"じょ、にょ",kunyomi:"オンナ、メ"},{q:"男",onyomi:"だん、なん",kunyomi:"オトコ"},{q:"目",onyomi:"もく、ぼく",kunyomi:"メ、マ"},{q:"耳",onyomi:"じ",kunyomi:"ミミ"},{q:"口",onyomi:"こう、く",kunyomi:"クチ"},{q:"手",onyomi:"しゅ",kunyomi:"テ、タ"},{q:"足",onyomi:"そく",kunyomi:"アシ、タ・リル"},{q:"見",onyomi:"けん",kunyomi:"ミ・ル、ミ・える"},{q:"音",onyomi:"おん、いん",kunyomi:"オト、ネ"},{q:"力",onyomi:"りょく、りき",kunyomi:"チカラ"},{q:"気",onyomi:"き、け",kunyomi:"なし"},{q:"円",onyomi:"えん",kunyomi:"マル・イ"},{q:"入",onyomi:"にゅう",kunyomi:"ハイ・ル、イ・レル"},{q:"出",onyomi:"しゅつ、すい",kunyomi:"デ・ル、ダ・ス"},{q:"立",onyomi:"りつ、りゅう",kunyomi:"タ・ツ、タ・テル"},{q:"休",onyomi:"きゅう",kunyomi:"ヤス・ム、ヤス・ミ"},{q:"先",onyomi:"せん",kunyomi:"サキ"},{q:"夕",onyomi:"ゆう",kunyomi:"ユウ"},{q:"本",onyomi:"ほん",kunyomi:"モト"},{q:"文",onyomi:"ぶん、もん",kunyomi:"フミ、アヤ"},{q:"字",onyomi:"じ",kunyomi:"アザ"},{q:"学",onyomi:"がく",kunyomi:"マナ・ブ"},{q:"校",onyomi:"こう",kunyomi:"なし"},{q:"村",onyomi:"そん",kunyomi:"ムラ"},{q:"町",onyomi:"ちょう",kunyomi:"マチ"},{q:"森",onyomi:"しん",kunyomi:"モリ"},{q:"正",onyomi:"せい、しょう",kunyomi:"タダ・シイ、マサ・ニ"},{q:"水",onyomi:"すい",kunyomi:"ミズ"},{q:"火",onyomi:"か",kunyomi:"ヒ、ホ"},{q:"玉",onyomi:"ぎょく",kunyomi:"タマ"},{q:"王",onyomi:"おう",kunyomi:"なし"},{q:"石",onyomi:"せき、しゃく",kunyomi:"イシ"},{q:"竹",onyomi:"ちく",kunyomi:"タケ"},{q:"糸",onyomi:"し",kunyomi:"イト"},{q:"貝",onyomi:"ばい",kunyomi:"カイ"},{q:"車",onyomi:"しゃ",kunyomi:"クルマ"},{q:"金",onyomi:"きん、こん",kunyomi:"カネ、カナ"},{q:"雨",onyomi:"う",kunyomi:"アメ、アマ"},{q:"赤",onyomi:"せき、しゃく",kunyomi:"アカ、アカ・イ"},{q:"青",onyomi:"せい、しょう",kunyomi:"アオ、アオ・イ"},{q:"白",onyomi:"はく、びゃく",kunyomi:"シロ、シロ・イ"},{q:"子",onyomi:"し、す",kunyomi:"コ"}
+        ],
+        grade2: [
+            {q:"引",onyomi:"いん",kunyomi:"ヒ・ク、ヒ・ケル"},{q:"羽",onyomi:"う",kunyomi:"ハ、ハネ"},{q:"雲",onyomi:"うん",kunyomi:"クモ"},{q:"園",onyomi:"えん",kunyomi:"ソノ"},{q:"遠",onyomi:"えん、おん",kunyomi:"トオ・イ"},{q:"何",onyomi:"か",kunyomi:"ナニ、ナン"},{q:"科",onyomi:"か",kunyomi:"なし"},{q:"夏",onyomi:"か、げ",kunyomi:"ナツ"},{q:"家",onyomi:"か、け",kunyomi:"イエ、ヤ"},{q:"歌",onyomi:"か",kunyomi:"ウタ、ウタ・ウ"},{q:"画",onyomi:"が、かく",kunyomi:"エガ・ク"},{q:"回",onyomi:"かい、え",kunyomi:"マワ・ル、マワ・ス"},{q:"会",onyomi:"かい、え",kunyomi:"ア・ウ"},{q:"海",onyomi:"かい",kunyomi:"ウミ"},{q:"絵",onyomi:"かい、え",kunyomi:"なし"},{q:"外",onyomi:"がい、げ",kunyomi:"ソト、ホカ、ハズ・ス"},{q:"角",onyomi:"かく",kunyomi:"カド、ツノ"},{q:"楽",onyomi:"がく、らく",kunyomi:"タノ・シイ、タノ・シム"},{q:"活",onyomi:"かつ",kunyomi:"なし"},{q:"間",onyomi:"かん、けん",kunyomi:"アイダ、マ"},{q:"丸",onyomi:"がん",kunyomi:"マル、マル・イ"},{q:"岩",onyomi:"がん",kunyomi:"イワ"},{q:"顔",onyomi:"がん",kunyomi:"カオ"},{q:"汽",onyomi:"き",kunyomi:"なし"},{q:"記",onyomi:"き",kunyomi:"シル・ス"},{q:"帰",onyomi:"き",kunyomi:"カエ・ル、カエ・ス"},{q:"弓",onyomi:"きゅう",kunyomi:"ユミ"},{q:"牛",onyomi:"ぎゅう、ご",kunyomi:"ウシ"},{q:"魚",onyomi:"ぎょ",kunyomi:"ウオ、サカナ"},{q:"京",onyomi:"きょう、けい",kunyomi:"なし"},{q:"強",onyomi:"きょう、ごう",kunyomi:"ツヨ・イ、ツヨ・マる、シ・いる"},{q:"教",onyomi:"きょう",kunyomi:"オシ・エル、オソ・ワル"},{q:"近",onyomi:"きん",kunyomi:"チカ・イ"},{q:"兄",onyomi:"きょう、けい",kunyomi:"アニ"},{q:"形",onyomi:"けい、ぎょう",kunyomi:"カタ、カチ"},{q:"計",onyomi:"けい",kunyomi:"ハカ・ル、ハカ・ラウ"},{q:"元",onyomi:"げん、がん",kunyomi:"モト"},{q:"言",onyomi:"げん、ごん",kunyomi:"イ・ウ、コト"},{q:"原",onyomi:"げん",kunyomi:"ハラ"},{q:"戸",onyomi:"こ",kunyomi:"ト"},{q:"古",onyomi:"こ",kunyomi:"フル・イ、フル・ス"},{q:"午",onyomi:"ご",kunyomi:"なし"},{q:"後",onyomi:"ご、こう",kunyomi:"ノチ、ウシ・ロ、アト、オクレ・ル"},{q:"語",onyomi:"ご",kunyomi:"カタ・ル、カタ・ラウ"},{q:"工",onyomi:"こう、く",kunyomi:"なし"},{q:"公",onyomi:"こう",kunyomi:"オオヤケ"},{q:"広",onyomi:"こう",kunyomi:"ヒロ・イ、ヒロ・マる、ヒロ・ゲル"},{q:"交",onyomi:"こう",kunyomi:"マジ・ワル、マジ・エル、カ・ワス"},{q:"光",onyomi:"こう",kunyomi:"ヒカリ、ヒカ・ル"},{q:"考",onyomi:"こう",kunyomi:"カンガ・エル"},{q:"行",onyomi:"こう、ぎょう、あん",kunyomi:"イ・ク、ユ・ク、オコナ・ウ"},{q:"高",onyomi:"こう",kunyomi:"タカ・イ、タカ・マる、タカ・メル"},{q:"黄",onyomi:"おう、こう",kunyomi:"キ、コ"},{q:"合",onyomi:"ごう、がっ、かっ",kunyomi:"ア・ウ、ア・ワス、ア・ワセる"},{q:"谷",onyomi:"こく",kunyomi:"タニ"},{q:"国",onyomi:"こく",kunyomi:"クニ"},{q:"黒",onyomi:"こく",kunyomi:"クロ、クロ・イ"},{q:"今",onyomi:"こん、きん",kunyomi:"イマ"},{q:"才",onyomi:"さい",kunyomi:"なし"},{q:"細",onyomi:"さい",kunyomi:"ホソ・イ、コマ・カイ"},{q:"作",onyomi:"さく、さ",kunyomi:"ツク・ル"},{q:"算",onyomi:"さん",kunyomi:"なし"},{q:"止",onyomi:"し",kunyomi:"ト・マる、ト・メル"},{q:"市",onyomi:"し",kunyomi:"イチ"},{q:"矢",onyomi:"し",kunyomi:"ヤ"},{q:"姉",onyomi:"し",kunyomi:"アネ"},{q:"思",onyomi:"し",kunyomi:"オモ・ウ"},{q:"紙",onyomi:"し",kunyomi:"カミ"},{q:"寺",onyomi:"じ",kunyomi:"テラ"},{q:"自",onyomi:"じ、し",kunyomi:"ミズカ・ラ"},{q:"時",onyomi:"じ",kunyomi:"トキ"},{q:"室",onyomi:"しつ",kunyomi:"ムロ"},{q:"社",onyomi:"しゃ",kunyomi:"ヤシロ"},{q:"弱",onyomi:"じゃく",kunyomi:"ヨワ・イ、ヨワ・る、ヨワ・メル"},{q:"首",onyomi:"しゅ",kunyomi:"クビ"},{q:"秋",onyomi:"しゅう",kunyomi:"アキ"},{q:"週",onyomi:"しゅう",kunyomi:"なし"},{q:"春",onyomi:"しゅん",kunyomi:"ハル"},{q:"書",onyomi:"しょ",kunyomi:"カ・ク"},{q:"少",onyomi:"しょう",kunyomi:"スク・ナイ、スコ・シ"},
+            {q:"場",onyomi:"じょう",kunyomi:"バ"},{q:"色",onyomi:"しき、しょく",kunyomi:"イロ"},{q:"食",onyomi:"しょく、じき",kunyomi:"ク・う、タ・べる"},{q:"心",onyomi:"しん",kunyomi:"ココロ"},{q:"新",onyomi:"しん",kunyomi:"アタラ・しい"},{q:"親",onyomi:"しん",kunyomi:"オヤ、シタ・しむ"},{q:"図",onyomi:"ず",_to:"",kunyomi:"ハカ・る"},{q:"数",onyomi:"すう、す",kunyomi:"カズ、カゾ・える"},{q:"西",onyomi:"せい、さい",kunyomi:"ニシ"},{q:"声",onyomi:"せい、しょう",kunyomi:"コエ"},{q:"星",onyomi:"せい、しょう",kunyomi:"ホシ"},{q:"晴",onyomi:"せい",kunyomi:"ハ・れる、ハ・らす"},{q:"切",onyomi:"せつ、さい",kunyomi:"キ・る、キ・れる"},{q:"雪",onyomi:"せつ",kunyomi:"ユキ"},{q:"船",onyomi:"せん",kunyomi:"フネ、フナ"},{q:"線",onyomi:"せん",kunyomi:"なし"},{q:"前",onyomi:"ぜん",kunyomi:"マエ"},{q:"組",onyomi:"そ",kunyomi:"クミ、ク・む"},{q:"走",onyomi:"そう",kunyomi:"ハシ・る"},{q:"多",onyomi:"た",kunyomi:"オオ・い"},{q:"太",onyomi:"たい、た",kunyomi:"フト・い、フト・る"},{q:"体",onyomi:"たい、てい",kunyomi:"カラダ"},{q:"台",onyomi:"だい、たい",kunyomi:"なし"},{q:"地",onyomi:"ち、じ",kunyomi:"なし"},{q:"池",onyomi:"ち",kunyomi:"イケ"},{q:"知",onyomi:"ち",kunyomi:"シ・る"},{q:"茶",onyomi:"ちゃ、さ",kunyomi:"なし"},{q:"昼",onyomi:"ちゅう",kunyomi:"ヒル"},{q:"長",onyomi:"ちょう",kunyomi:"ナガ・い"},{q:"鳥",onyomi:"ちょう",kunyomi:"トリ"},{q:"朝",onyomi:"ちょう",kunyomi:"アサ"},{q:"直",onyomi:"ちょく、じき",kunyomi:"タダ・ちに、ナオ・す、ナオ・る"},{q:"通",onyomi:"つう、つ",kunyomi:"トオ・る、トオ・す、カヨ・う"},{q:"弟",onyomi:"てい、だい、で",kunyomi:"オトウト"},{q:"店",onyomi:"てん",kunyomi:"ミセ"},{q:"点",onyomi:"てん",kunyomi:"なし"},{q:"電",onyomi:"でん",kunyomi:"なし"},{q:"刀",onyomi:"とう",kunyomi:"カタナ"},{q:"冬",onyomi:"とう",kunyomi:"フユ"},{q:"当",onyomi:"とう",kunyomi:"ア・たる、ア・てる"},{q:"東",onyomi:"とう",kunyomi:"ヒガシ"},{q:"答",onyomi:"とう",kunyomi:"コタ・える、コタ・え"},{q:"頭",onyomi:"とう、ず、と",kunyomi:"アタマ、カシラ"},{q:"同",onyomi:"どう",kunyomi:"オナ・じ"},{q:"道",onyomi:"どう、とう",kunyomi:"ミチ"},{q:"読",onyomi:"どく、とく、とう",kunyomi:"ヨ・む"},{q:"内",onyomi:"ない、だい",kunyomi:"ウチ"},{q:"南",onyomi:"なん、な",kunyomi:"ミナミ"},{q:"肉",onyomi:"にく",kunyomi:"なし"},{q:"馬",onyomi:"ば",kunyomi:"ウマ、マ"},{q:"売",onyomi:"ばい",kunyomi:"ウ・る、ウ・れる"},{q:"買",onyomi:"ばい",kunyomi:"カ・う"},{q:"麦",onyomi:"ばく",kunyomi:"ムギ"},{q:"半",onyomi:"はん",kunyomi:"ナカ・ば"},{q:"番",onyomi:"ばん",kunyomi:"なし"},{q:"父",onyomi:"ふ",kunyomi:"チチ"},{q:"風",onyomi:"ふう、ふ",kunyomi:"カゼ、カザ"},{q:"分",onyomi:"ぶん、ふん、ぶ",kunyomi:"ワ・かる、ワ・ける"},{q:"聞",onyomi:"ぶん、もん",kunyomi:"キ・く、キ・こえる"},{q:"米",onyomi:"べい、まい",kunyomi:"コメ、ヨネ"},{q:"歩",onyomi:"ほ、ぶ、ふ",kunyomi:"アル・く、アゆ・む"},{q:"母",onyomi:"ぼ",kunyomi:"ハハ"},{q:"方",onyomi:"ほう",kunyomi:"カタ"},{q:"北",onyomi:"ほく",kunyomi:"キタ"},{q:"毎",onyomi:"まい",kunyomi:"なし"},{q:"妹",onyomi:"まい",kunyomi:"イモウト"},{q:"万",onyomi:"まん、ばん",kunyomi:"なし"},{q:"明",onyomi:"めい、みょう",kunyomi:"アカ・るい、アカ・るむ、ア・きらか"},{q:"鳴",onyomi:"めい",kunyomi:"ナ・く、ナ・る、ナ・らす"},{q:"毛",onyomi:"もう",kunyomi:"ケ"},{q:"門",onyomi:"もん",kunyomi:"カド"},{q:"夜",onyomi:"や",kunyomi:"ヨ、ヨル"},{q:"野",onyomi:"や",kunyomi:"ノ"},{q:"友",onyomi:"ゆう",kunyomi:"トモ"},{q:"用",onyomi:"よう",kunyomi:"モチ・いる"},{q:"曜",onyomi:"よう",kunyomi:"なし"},{q:"来",onyomi:"らい",kunyomi:"ク・る、キ・たる、キ・たす"},{q:"里",onyomi:"り",kunyomi:"サト"},{q:"理",onyomi:"り",kunyomi:"なし"},{q:"話",onyomi:"わ",kunyomi:"ハナ・す、ハナ・し"}
+        ]
+    };
+
+    let currentCategory = [];
+    let currentQuestion = null;
+    let totalCount = 0;
+    let blueCount = 0;
+    let redCount = 0;
+
+    function startApp() {
+        const catKey = document.getElementById("category").value;
+        currentCategory = data[catKey];
+        
+        totalCount = 0;
+        blueCount = 0;
+        redCount = 0;
+        updateStats();
+
+        document.getElementById("screen-home").classList.add("hidden");
+        document.getElementById("screen-result").classList.add("hidden");
+        document.getElementById("screen-quiz").classList.remove("hidden");
+
+        nextQuestion();
+    }
+
+    function nextQuestion() {
+        const randomIndex = Math.floor(Math.random() * currentCategory.length);
+        currentQuestion = currentCategory[randomIndex];
+        totalCount++;
+        
+        document.getElementById("question-text").innerText = currentQuestion.q;
+        document.getElementById("answer-text").innerText = "";
+        
+        document.getElementById("btn-show-answer").classList.remove("hidden");
+        document.getElementById("judge-buttons").classList.add("hidden");
+        updateStats();
+    }
+
+    function showAnswer() {
+        let answerStr = "";
+        if (currentQuestion.onyomi !== undefined || currentQuestion.kunyomi !== undefined) {
+            const on = currentQuestion.onyomi || "なし";
+            const kun = currentQuestion.kunyomi || "なし";
+            answerStr = `音読み(ひら): ${on}\n訓読み(カタ): ${kun}`;
+        } else {
+            answerStr = `答え: ${currentQuestion.a}`;
+        }
+        
+        document.getElementById("answer-text").innerText = answerStr;
+        document.getElementById("btn-show-answer").classList.add("hidden");
+        document.getElementById("judge-buttons").classList.remove("hidden");
+    }
+
+    function judge(isCorrect) {
+        if (isCorrect) {
+            blueCount++;
+        } else {
+            redCount++;
+        }
+        
+        if (redCount >= 10) {
+            endApp();
+        } else {
+            nextQuestion();
+        }
+    }
+
+    function updateStats() {
+        document.getElementById("total-count").innerText = totalCount;
+        document.getElementById("blue-count").innerText = blueCount;
+        document.getElementById("red-count").innerText = redCount;
+    }
+
+    function endApp() {
+        document.getElementById("screen-quiz").classList.add("hidden");
+        document.getElementById("screen-result").classList.remove("hidden");
+        document.getElementById("final-score").innerText = blueCount;
+    }
+
+    function goHome() {
+        document.getElementById("screen-result").classList.add("hidden");
+        document.getElementById("screen-home").classList.remove("hidden");
+    }
+</script>
+
+</body>
+</html>
